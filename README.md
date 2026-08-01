@@ -97,6 +97,12 @@ cargo run --release -- \
 
 The track format is selected from the `.fit` or `.gpx` filename extension. GPX track points without timestamps are ignored.
 
+## Example: hiking or birdwatching with a GPS-less SLR
+
+A hiker or birdwatcher may carry a professional SLR camera with excellent image quality but no built-in GPS. As long as the camera clock is accurate, the Android [OpenTracks app on Google Play](https://play.google.com/store/apps/details?id=de.dennisguse.opentracks.playstore) or [F-Droid](https://f-droid.org/packages/de.dennisguse.opentracks/) can record the outing independently. Export that activity as GPX, then use Track Time Tagger to add the corresponding GPS position to each photo afterward.
+
+This is useful when the camera and tracking device are separate: the camera records the best image, while the phone or watch records the route. Accurate timestamps provide the link between them.
+
 ## Interactive update
 
 ```bash
