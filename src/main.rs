@@ -5,6 +5,7 @@ use clap::{Parser, ValueEnum};
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use exif::{In, Reader, Tag, Value as ExifValue};
 use fitparser::{FitDataField, Value};
+use gpx::read as read_gpx;
 use std::{
     cmp::Ordering,
     ffi::OsStr,
@@ -26,9 +27,9 @@ enum MapProvider {
 #[derive(Debug, Parser)]
 #[command(version, about)]
 struct Args {
-    /// Garmin/ANT FIT activity containing timestamped positions.
+    /// FIT or GPX activity containing timestamped positions.
     #[arg(short, long)]
-    fit: PathBuf,
+    track: PathBuf,
 
     /// Image file or directory to scan.
     #[arg(short, long, default_value = ".")]
@@ -38,7 +39,7 @@ struct Args {
     #[arg(long, default_value = "America/Toronto")]
     timezone: Tz,
 
-    /// Add this many seconds to the image time before matching the FIT track.
+    /// Add this many seconds to the image time before matching the track.
     #[arg(long, default_value_t = 0)]
     camera_offset_seconds: i64,
 
@@ -100,7 +101,7 @@ fn main() -> Result<()> {
     let args = Args::parse();
     ensure_exiftool_available()?;
 
-    let track = load_track(&args.fit)?;
+    let track = load_track(&args.track)?;
     println!(
         "Loaded {} GPS points from {} through {}",
         track.len(),
@@ -207,6 +208,15 @@ fn ensure_exiftool_available() -> Result<()> {
 }
 
 fn load_track(path: &Path) -> Result<Vec<TrackPoint>> {
+    match path.extension().and_then(OsStr::to_str) {
+        Some(extension) if extension.eq_ignore_ascii_case("fit") => load_fit_track(path),
+        Some(extension) if extension.eq_ignore_ascii_case("gpx") => load_gpx_track(path),
+        Some(extension) => bail!("unsupported track format .{extension}; use a .fit or .gpx file"),
+        None => bail!("track file must have a .fit or .gpx extension"),
+    }
+}
+
+fn load_fit_track(path: &Path) -> Result<Vec<TrackPoint>> {
     let mut file = File::open(path).with_context(|| format!("opening {}", path.display()))?;
     let records = fitparser::from_reader(&mut file)
         .with_context(|| format!("parsing FIT file {}", path.display()))?;
@@ -241,6 +251,46 @@ fn load_track(path: &Path) -> Result<Vec<TrackPoint>> {
     points.dedup_by_key(|p| p.time);
     if points.len() < 2 {
         bail!("FIT file contained fewer than two timestamped GPS points");
+    }
+    Ok(points)
+}
+
+fn load_gpx_track(path: &Path) -> Result<Vec<TrackPoint>> {
+    let file = File::open(path).with_context(|| format!("opening {}", path.display()))?;
+    let gpx = read_gpx(BufReader::new(file))
+        .with_context(|| format!("parsing GPX file {}", path.display()))?;
+
+    let mut points = Vec::new();
+    for track in gpx.tracks {
+        for segment in track.segments {
+            for waypoint in segment.points {
+                let Some(time) = waypoint.time else {
+                    continue;
+                };
+                let time = DateTime::parse_from_rfc3339(&time.format()?)?.with_timezone(&Utc);
+                let point = waypoint.point();
+                let lat = point.y();
+                let lon = point.x();
+                if lat.is_finite()
+                    && lon.is_finite()
+                    && (-90.0..=90.0).contains(&lat)
+                    && (-180.0..=180.0).contains(&lon)
+                {
+                    points.push(TrackPoint {
+                        time,
+                        lat,
+                        lon,
+                        altitude: waypoint.elevation,
+                    });
+                }
+            }
+        }
+    }
+
+    points.sort_by_key(|p| p.time);
+    points.dedup_by_key(|p| p.time);
+    if points.len() < 2 {
+        bail!("GPX file contained fewer than two timestamped GPS points");
     }
     Ok(points)
 }
@@ -601,5 +651,27 @@ mod tests {
         assert!(is_supported_image(Path::new("scan.tiff")));
         assert!(!is_supported_image(Path::new("photo.png")));
         assert!(!is_supported_image(Path::new("photo")));
+    }
+
+    #[test]
+    fn rejects_unknown_track_formats() {
+        let error = load_track(Path::new("activity.csv")).unwrap_err();
+
+        assert!(error.to_string().contains(".fit or .gpx"));
+    }
+
+    #[test]
+    fn loads_timestamped_gpx_track_points() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/sample.gpx");
+        let track = load_track(&path).unwrap();
+
+        assert_eq!(track.len(), 2);
+        assert_eq!(
+            track[0].time,
+            Utc.with_ymd_and_hms(2024, 1, 15, 17, 0, 0).unwrap()
+        );
+        assert_eq!(track[0].lat, 42.98);
+        assert_eq!(track[0].lon, -81.24);
+        assert_eq!(track[0].altitude, Some(100.0));
     }
 }

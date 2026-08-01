@@ -1,9 +1,9 @@
 [package]
-name = "fit-photo-geotag"
+name = "track-time-tagger"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "Interactively match image EXIF timestamps to a FIT GPS track"
+description = "Match image EXIF timestamps to a FIT or GPX GPS track"
 
 [dependencies]
 anyhow = "1"
@@ -12,5 +12,6 @@ chrono-tz = "0.10"
 clap = { version = "4", features = ["derive"] }
 dialoguer = "0.11"
 fitparser = "0.11"
+gpx = "0.10"
 kamadak-exif = "0.6"
 walkdir = "2"
