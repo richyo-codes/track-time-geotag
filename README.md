@@ -19,16 +19,6 @@ The default writer has no external runtime requirements. Build with Rust:
 cargo build --release
 ```
 
-Optional ExifTool backend:
-
-```bash
-# Fedora
-sudo dnf install perl-Image-ExifTool
-
-# Debian/Ubuntu
-sudo apt install libimage-exiftool-perl
-```
-
 ## Build
 
 ```bash
@@ -134,20 +124,6 @@ track-time-tagger \
 
 For a single input image, `--output` is treated as the destination directory for that image. Backups, when enabled, are created beside the copied output image.
 
-## Optional ExifTool backend
-
-Track Time Tagger uses its integrated Rust EXIF writer by default. If a particular camera file is not handled correctly, install ExifTool and opt into its broader metadata support:
-
-```bash
-track-time-tagger \
-  --track activity.gpx \
-  --images ./photos \
-  --recursive \
-  --exiftool
-```
-
-The `--exiftool` option is the only mode that requires the external Perl-based ExifTool command.
-
 ## Camera clock offset
 
 If the camera was 37 seconds slow, add 37 seconds before matching:
@@ -171,10 +147,14 @@ If the camera was two minutes fast, subtract 120 seconds:
 - `--yes` accepts all valid matches.
 - `--output DIR` writes updated copies under `DIR` and leaves input images unchanged.
 - `--no-backup` disables the `<image>_original` backup for either metadata writer. Leave it off initially.
-- Supported input images are JPEG and TIFF. HEIC/AVIF support would require a different EXIF-reading path, although ExifTool itself can handle many additional formats.
+- Supported input images are JPEG and TIFF.
 
 ## Important timezone note
 
 Standard EXIF `DateTimeOriginal` usually has no timezone. FIT and GPX timestamps represent an absolute time. Therefore `--timezone` must describe the timezone in which the camera clock was set when the photos were taken.
 
 During an ambiguous fall daylight-saving transition, the tool refuses the timestamp rather than silently choosing the wrong UTC instant.
+
+## Advanced optional backend
+
+The standard installation uses only the integrated Rust metadata writer. For the optional ExifTool backend, see [the advanced ExifTool guide](docs/exiftool-backend.md).
