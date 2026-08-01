@@ -57,7 +57,7 @@ Google Maps:  https://www.google.com/maps/search/?api=1&query=42.98,-81.24
 
 ## Example: geotagging race-event photos
 
-Suppose a professional photographer covers a road race with a camera whose clock is accurately synchronized, but whose photos contain no GPS metadata. The photographer can record the course with a Garmin watch or another GPS device at the same time, then use either the original FIT file or a GPX export.
+Suppose a professional photographer covers a road race with a camera whose clock is accurate, but whose photos contain no GPS metadata. A runner or other subject can carry a Garmin watch or another GPS device during the event, then use the original FIT file or a GPX export to retrofit GPS metadata after receiving the photographer's images.
 
 The camera provides the timestamp for each photo, while the track file provides the position for each moment. The tool combines those two sources, interpolating between nearby track points when necessary. This can place photos taken at aid stations, turns, finish lines, and along the course on a map without requiring a GPS-enabled camera.
 
