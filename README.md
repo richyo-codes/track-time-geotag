@@ -119,6 +119,21 @@ track-time-tagger \
 
 The program asks separately for each photo before writing.
 
+## Writing to a separate directory
+
+By default, accepted matches update the input images in place. Use `--output` to leave the originals unchanged. When scanning a directory, the input directory layout is reproduced below the output directory:
+
+```bash
+track-time-tagger \
+  --track hike.gpx \
+  --images ./camera-originals \
+  --output ./camera-geotagged \
+  --recursive \
+  --yes
+```
+
+For a single input image, `--output` is treated as the destination directory for that image. Backups, when enabled, are created beside the copied output image.
+
 ## Optional ExifTool backend
 
 Track Time Tagger uses its integrated Rust EXIF writer by default. If a particular camera file is not handled correctly, install ExifTool and opt into its broader metadata support:
@@ -154,6 +169,7 @@ If the camera was two minutes fast, subtract 120 seconds:
 - `--max-gap-seconds 300` requires both surrounding track points to be no more than five minutes away.
 - `--dry-run` never prompts or writes.
 - `--yes` accepts all valid matches.
+- `--output DIR` writes updated copies under `DIR` and leaves input images unchanged.
 - `--no-backup` disables the `<image>_original` backup for either metadata writer. Leave it off initially.
 - Supported input images are JPEG and TIFF. HEIC/AVIF support would require a different EXIF-reading path, although ExifTool itself can handle many additional formats.
 

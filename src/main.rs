@@ -10,7 +10,7 @@ use little_exif::{exif_tag::ExifTag, metadata::Metadata, rational::uR64};
 use std::{
     cmp::Ordering,
     ffi::OsStr,
-    fs::File,
+    fs::{self, File},
     io::BufReader,
     path::{Path, PathBuf},
     process::Command,
@@ -35,6 +35,10 @@ struct Args {
     /// Image file or directory to scan.
     #[arg(short, long, default_value = ".")]
     images: PathBuf,
+
+    /// Optional output directory. Preserves the input directory layout and leaves inputs unchanged.
+    #[arg(short, long)]
+    output: Option<PathBuf>,
 
     /// IANA timezone used to interpret timezone-less EXIF timestamps.
     #[arg(long, default_value = "America/Toronto")]
@@ -117,6 +121,7 @@ fn main() -> Result<()> {
     );
 
     let images = find_images(&args.images, args.recursive)?;
+    let input_is_file = args.images.is_file();
     if images.is_empty() {
         bail!(
             "no supported JPEG/TIFF images found under {}",
@@ -190,9 +195,30 @@ fn main() -> Result<()> {
                 .interact()?;
 
         if accept {
-            write_gps(&info.path, &matched, args.no_backup, args.exiftool)?;
+            let destination = match &args.output {
+                Some(output) => {
+                    let destination = output_path(&info.path, &args.images, output, input_is_file)?;
+                    if let Some(parent) = destination.parent() {
+                        fs::create_dir_all(parent).with_context(|| {
+                            format!("creating output directory {}", parent.display())
+                        })?;
+                    }
+                    if destination != info.path {
+                        fs::copy(&info.path, &destination).with_context(|| {
+                            format!(
+                                "copying {} to {}",
+                                info.path.display(),
+                                destination.display()
+                            )
+                        })?;
+                    }
+                    destination
+                }
+                None => info.path.clone(),
+            };
+            write_gps(&destination, &matched, args.no_backup, args.exiftool)?;
             updated += 1;
-            println!("  Updated.");
+            println!("  Updated {}.", destination.display());
         } else {
             skipped += 1;
             println!("  Not changed.");
@@ -358,6 +384,27 @@ fn find_images(root: &Path, recursive: bool) -> Result<Vec<PathBuf>> {
         .collect();
     paths.sort();
     Ok(paths)
+}
+
+fn output_path(
+    input: &Path,
+    input_root: &Path,
+    output_root: &Path,
+    input_is_file: bool,
+) -> Result<PathBuf> {
+    if input_is_file {
+        let file_name = input.file_name().context("input image has no file name")?;
+        return Ok(output_root.join(file_name));
+    }
+
+    let relative = input.strip_prefix(input_root).with_context(|| {
+        format!(
+            "image {} is not under input directory {}",
+            input.display(),
+            input_root.display()
+        )
+    })?;
+    Ok(output_root.join(relative))
 }
 
 fn is_supported_image(path: &Path) -> bool {
@@ -740,5 +787,31 @@ mod tests {
         assert_eq!(track[0].lat, 42.98);
         assert_eq!(track[0].lon, -81.24);
         assert_eq!(track[0].altitude, Some(100.0));
+    }
+
+    #[test]
+    fn mirrors_nested_images_into_output_directory() {
+        let destination = output_path(
+            Path::new("photos/hikes/bird.jpg"),
+            Path::new("photos"),
+            Path::new("geotagged"),
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(destination, Path::new("geotagged/hikes/bird.jpg"));
+    }
+
+    #[test]
+    fn places_single_file_in_output_directory() {
+        let destination = output_path(
+            Path::new("photo.jpg"),
+            Path::new("photo.jpg"),
+            Path::new("geotagged"),
+            true,
+        )
+        .unwrap();
+
+        assert_eq!(destination, Path::new("geotagged/photo.jpg"));
     }
 }
