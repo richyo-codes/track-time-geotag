@@ -6,6 +6,7 @@ use dialoguer::{theme::ColorfulTheme, Confirm};
 use exif::{In, Reader, Tag, Value as ExifValue};
 use fitparser::{FitDataField, Value};
 use gpx::read as read_gpx;
+use little_exif::{exif_tag::ExifTag, metadata::Metadata, rational::uR64};
 use std::{
     cmp::Ordering,
     ffi::OsStr,
@@ -67,9 +68,13 @@ struct Args {
     #[arg(long)]
     overwrite_gps: bool,
 
-    /// Pass -overwrite_original to exiftool instead of retaining _original backups.
+    /// Disable the _original backup when writing metadata.
     #[arg(long)]
     no_backup: bool,
+
+    /// Use the external Perl-based ExifTool writer instead of the built-in Rust writer.
+    #[arg(long)]
+    exiftool: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -99,7 +104,9 @@ struct Match {
 
 fn main() -> Result<()> {
     let args = Args::parse();
-    ensure_exiftool_available()?;
+    if args.exiftool {
+        ensure_exiftool_available()?;
+    }
 
     let track = load_track(&args.track)?;
     println!(
@@ -183,7 +190,7 @@ fn main() -> Result<()> {
                 .interact()?;
 
         if accept {
-            write_gps(&info.path, &matched, args.no_backup)?;
+            write_gps(&info.path, &matched, args.no_backup, args.exiftool)?;
             updated += 1;
             println!("  Updated.");
         } else {
@@ -481,7 +488,67 @@ fn print_map_links(provider: MapProvider, lat: f64, lon: f64) {
     }
 }
 
-fn write_gps(path: &Path, matched: &Match, no_backup: bool) -> Result<()> {
+fn write_gps(path: &Path, matched: &Match, no_backup: bool, use_exiftool: bool) -> Result<()> {
+    if use_exiftool {
+        return write_gps_with_exiftool(path, matched, no_backup);
+    }
+
+    write_gps_with_little_exif(path, matched, no_backup)
+}
+
+fn write_gps_with_little_exif(path: &Path, matched: &Match, no_backup: bool) -> Result<()> {
+    if !no_backup {
+        let backup = path.with_file_name(format!(
+            "{}_original",
+            path.file_name().and_then(OsStr::to_str).unwrap_or("image")
+        ));
+        std::fs::copy(path, &backup)
+            .with_context(|| format!("creating backup {}", backup.display()))?;
+    }
+
+    let mut metadata = Metadata::new_from_path(path)
+        .map_err(|err| anyhow::anyhow!("reading EXIF from {}: {err}", path.display()))?;
+    metadata.set_tag(ExifTag::GPSLatitude(decimal_to_dms(matched.lat.abs())));
+    metadata.set_tag(ExifTag::GPSLatitudeRef(if matched.lat < 0.0 {
+        "S".to_string()
+    } else {
+        "N".to_string()
+    }));
+    metadata.set_tag(ExifTag::GPSLongitude(decimal_to_dms(matched.lon.abs())));
+    metadata.set_tag(ExifTag::GPSLongitudeRef(if matched.lon < 0.0 {
+        "W".to_string()
+    } else {
+        "E".to_string()
+    }));
+
+    if let Some(altitude) = matched.altitude {
+        metadata.set_tag(ExifTag::GPSAltitude(vec![uR64::from(altitude.abs())]));
+        metadata.set_tag(ExifTag::GPSAltitudeRef(vec![if altitude < 0.0 {
+            1
+        } else {
+            0
+        }]));
+    }
+
+    metadata
+        .write_to_file(path)
+        .map_err(|err| anyhow::anyhow!("writing EXIF to {}: {err}", path.display()))?;
+    Ok(())
+}
+
+fn decimal_to_dms(value: f64) -> Vec<uR64> {
+    let degrees = value.floor();
+    let minutes_with_fraction = (value - degrees) * 60.0;
+    let minutes = minutes_with_fraction.floor();
+    let seconds = (minutes_with_fraction - minutes) * 60.0;
+    vec![
+        uR64::from(degrees),
+        uR64::from(minutes),
+        uR64::from(seconds),
+    ]
+}
+
+fn write_gps_with_exiftool(path: &Path, matched: &Match, no_backup: bool) -> Result<()> {
     let mut cmd = Command::new("exiftool");
     if no_backup {
         cmd.arg("-overwrite_original");

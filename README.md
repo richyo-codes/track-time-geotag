@@ -7,22 +7,26 @@ A small interactive Rust CLI that:
 3. interprets that timezone-less camera timestamp in a chosen IANA timezone,
 4. finds the surrounding GPS samples and linearly interpolates the position,
 5. prints OpenStreetMap and Google Maps links for verification,
-6. prompts before writing GPS EXIF metadata through `exiftool`.
+6. prompts before writing GPS EXIF metadata through its built-in Rust writer.
 
-By default, ExifTool retains an `<image>_original` backup. Existing GPS tags are skipped unless `--overwrite-gps` is given.
+The built-in writer is used by default, so no Perl or ExifTool installation is required. It retains an `<image>_original` backup unless `--no-backup` is given. Existing GPS tags are skipped unless `--overwrite-gps` is given.
 
 ## Requirements
 
-Fedora:
+The default writer has no external runtime requirements. Build with Rust:
 
 ```bash
-sudo dnf install rust cargo perl-Image-ExifTool
+cargo build --release
 ```
 
-Debian/Ubuntu:
+Optional ExifTool backend:
 
 ```bash
-sudo apt install cargo libimage-exiftool-perl
+# Fedora
+sudo dnf install perl-Image-ExifTool
+
+# Debian/Ubuntu
+sudo apt install libimage-exiftool-perl
 ```
 
 ## Build
@@ -115,6 +119,20 @@ track-time-tagger \
 
 The program asks separately for each photo before writing.
 
+## Optional ExifTool backend
+
+Track Time Tagger uses its integrated Rust EXIF writer by default. If a particular camera file is not handled correctly, install ExifTool and opt into its broader metadata support:
+
+```bash
+track-time-tagger \
+  --track activity.gpx \
+  --images ./photos \
+  --recursive \
+  --exiftool
+```
+
+The `--exiftool` option is the only mode that requires the external Perl-based ExifTool command.
+
 ## Camera clock offset
 
 If the camera was 37 seconds slow, add 37 seconds before matching:
@@ -136,7 +154,7 @@ If the camera was two minutes fast, subtract 120 seconds:
 - `--max-gap-seconds 300` requires both surrounding track points to be no more than five minutes away.
 - `--dry-run` never prompts or writes.
 - `--yes` accepts all valid matches.
-- `--no-backup` passes `-overwrite_original` to ExifTool. Leave it off initially.
+- `--no-backup` disables the `<image>_original` backup for either metadata writer. Leave it off initially.
 - Supported input images are JPEG and TIFF. HEIC/AVIF support would require a different EXIF-reading path, although ExifTool itself can handle many additional formats.
 
 ## Important timezone note
