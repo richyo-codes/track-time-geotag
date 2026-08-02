@@ -2,7 +2,7 @@
 
 ## Local-first browser workflow
 
-The planned web/WASM application processes selected FIT/GPX tracks and images entirely in the browser. The standard workflow does not upload photos, tracks, EXIF metadata, or derived GPS locations to a remote server.
+The web/WASM application processes selected FIT/GPX tracks and images entirely in the browser. The standard workflow does not upload photos, tracks, EXIF metadata, or derived GPS locations to a remote server.
 
 1. The user explicitly selects a track and images or a directory.
 2. The browser reads only those selected files.
@@ -10,7 +10,7 @@ The planned web/WASM application processes selected FIT/GPX tracks and images en
 4. The user downloads geotagged copies or explicitly chooses a local save destination.
 5. Original local files remain unchanged.
 
-The first web release should support JPEG output. The current in-memory EXIF writer path is JPEG-only; TIFF support requires additional browser-compatible writing work.
+The web release supports JPEG output. The current in-memory EXIF writer path is JPEG-only; TIFF support requires additional browser-compatible writing work.
 
 ## Privacy promises
 

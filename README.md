@@ -31,6 +31,34 @@ The binary will be at:
 target/release/track-time-tagger
 ```
 
+## Optional local GUI (early preview)
+
+The CLI remains the primary application. An optional Dioxus GUI lives in
+[`gui/`](gui/) as the foundation for a browser-first, local-only workflow.
+It does not send selected photos or tracks to a server.
+
+The GUI currently supports local JPEG processing: choose or drag in one FIT/GPX
+track and one or more JPEGs, review the local image previews, then download a
+GPS-tagged copy of each matching image. It is deliberately separate from the
+CLI, so normal CLI builds do not pull in GUI dependencies.
+
+Install the Dioxus development tool and the WebAssembly target once:
+
+```bash
+cargo install dioxus-cli
+rustup target add wasm32-unknown-unknown
+```
+
+Then serve the GUI locally:
+
+```bash
+cd gui
+dx serve --web
+```
+
+For a desktop preview instead, use `dx serve --desktop`. Platform setup notes
+and the privacy model are in [the GUI guide](gui/README.md).
+
 ## First run: dry-run and verify
 
 ```bash

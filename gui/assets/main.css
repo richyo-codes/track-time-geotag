@@ -1,0 +1,35 @@
+:root {
+  color: #1e293b;
+  background: #eef5f0;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+.page { max-width: 760px; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
+.hero { margin-bottom: 2rem; }
+.eyebrow { color: #16705a; font-size: .75rem; font-weight: 700; letter-spacing: .12em; }
+h1 { margin: .25rem 0 .5rem; font-size: clamp(2.25rem, 8vw, 4rem); line-height: 1; }
+h2 { margin-top: 0; }
+.lede { max-width: 44rem; color: #475569; font-size: 1.15rem; line-height: 1.5; }
+.card { margin: 1rem 0; padding: 1.4rem; background: #fff; border: 1px solid #d8e3dc; border-radius: 14px; box-shadow: 0 8px 24px rgb(24 64 48 / 6%); }
+.tabs { display: flex; gap: .5rem; margin-bottom: 1rem; }
+.tab { padding: .6rem .85rem; border: 1px solid #b8c9bf; border-radius: 7px; background: #fff; color: #475569; font: inherit; }
+.tab.active { border-color: #16705a; background: #16705a; color: #fff; font-weight: 700; }
+.drop-zone { display: grid; place-items: center; min-height: 7rem; margin: 1rem 0; padding: 1rem; border: 2px dashed #78a58f; border-radius: 9px; background: #f4faf6; color: #16705a; font-weight: 700; }
+.field { display: grid; gap: .45rem; margin-top: 1rem; font-weight: 650; }
+input { width: 100%; padding: .65rem; border: 1px solid #b8c9bf; border-radius: 7px; background: #fff; font: inherit; }
+.settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+.settings .field { margin-top: 0; }
+.muted, .footnote { color: #64748b; line-height: 1.5; }
+.selection-count { margin-bottom: .35rem; color: #16705a; font-weight: 700; }
+.selection-list { max-height: 10rem; margin: 0; padding-left: 1.25rem; overflow-y: auto; color: #475569; }
+.privacy { border-left: 5px solid #16705a; }
+li { margin: .55rem 0; line-height: 1.4; }
+.primary { width: 100%; padding: .9rem 1rem; border: 0; border-radius: 8px; background: #16705a; color: #fff; font: inherit; font-weight: 700; }
+.primary:disabled { cursor: not-allowed; opacity: .58; }
+.status { padding: .9rem; border-radius: 8px; background: #e6f4eb; color: #14532d; line-height: 1.45; }
+.preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; }
+.preview { min-width: 0; margin: 0; }
+.preview img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; background: #e2e8f0; }
+.preview figcaption { overflow: hidden; margin-top: .4rem; color: #475569; font-size: .85rem; text-overflow: ellipsis; white-space: nowrap; }

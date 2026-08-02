@@ -1,0 +1,16 @@
+[package]
+name = "track-time-tagger-core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+description = "Browser-compatible geotagging engine for Track Time Tagger"
+
+[dependencies]
+anyhow = "1"
+chrono = "0.4"
+chrono-tz = "0.10"
+fitparser = "0.11"
+gpx = "0.10"
+kamadak-exif = "0.6"
+little_exif = "0.6"
