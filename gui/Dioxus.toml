@@ -1,0 +1,13 @@
+[application]
+name = "track-time-tagger"
+public_dir = "assets"
+
+[web.app]
+title = "Track Time Tagger"
+
+[web.resource]
+style = ["main.css"]
+
+# Required by the Dioxus 0.7 configuration schema. Development uses the
+# regular stylesheet above and adds no development-only resources.
+[web.resource.dev]

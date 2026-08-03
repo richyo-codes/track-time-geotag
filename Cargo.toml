@@ -5,6 +5,10 @@ edition = "2021"
 license = "MIT"
 description = "Match image EXIF timestamps to a FIT or GPX GPS track"
 
+[workspace]
+members = ["core", "gui"]
+resolver = "2"
+
 [dependencies]
 anyhow = "1"
 chrono = "0.4"

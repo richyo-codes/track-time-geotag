@@ -1,6 +1,10 @@
 # track-time-tagger
 
-A small interactive Rust CLI that:
+Add GPS EXIF tags to timestamped photos by matching them to a FIT or GPX track.
+Track Time Tagger works locally: the CLI supports JPEG/TIFF, and the optional
+browser GUI produces geotagged JPEG copies without uploading photos or tracks.
+
+The primary interface is a small interactive Rust CLI that:
 
 1. parses a Garmin/ANT `.fit` file with [`fitparser`](https://github.com/stadelmanma/fitparse-rs) or a `.gpx` track with [`gpx`](https://docs.rs/gpx),
 2. reads `DateTimeOriginal` from local JPEG/TIFF images,
@@ -19,16 +23,6 @@ The default writer has no external runtime requirements. Build with Rust:
 cargo build --release
 ```
 
-Optional ExifTool backend:
-
-```bash
-# Fedora
-sudo dnf install perl-Image-ExifTool
-
-# Debian/Ubuntu
-sudo apt install libimage-exiftool-perl
-```
-
 ## Build
 
 ```bash
@@ -41,6 +35,34 @@ The binary will be at:
 target/release/track-time-tagger
 ```
 
+## Optional local GUI (early preview)
+
+The CLI remains the primary application. An optional Dioxus GUI lives in
+[`gui/`](gui/) as the foundation for a browser-first, local-only workflow.
+It does not send selected photos or tracks to a server.
+
+The GUI currently supports local JPEG processing: choose or drag in one FIT/GPX
+track and one or more JPEGs, review the local image previews, then download a
+GPS-tagged copy of each matching image. It is deliberately separate from the
+CLI, so normal CLI builds do not pull in GUI dependencies.
+
+Install the Dioxus development tool and the WebAssembly target once:
+
+```bash
+cargo install dioxus-cli
+rustup target add wasm32-unknown-unknown
+```
+
+Then serve the GUI locally:
+
+```bash
+cd gui
+dx serve --web
+```
+
+For a desktop preview instead, use `dx serve --desktop`. Platform setup notes
+and the privacy model are in [the GUI guide](gui/README.md).
+
 ## First run: dry-run and verify
 
 ```bash
@@ -52,12 +74,8 @@ track-time-tagger \
   --dry-run
 ```
 
-Each match prints links like:
-
-```text
-OpenStreetMap: https://www.openstreetmap.org/?mlat=42.98&mlon=-81.24#map=18/42.98/-81.24
-Google Maps:  https://www.google.com/maps/search/?api=1&query=42.98,-81.24
-```
+Each match prints optional map-provider links for verifying its proposed
+location.
 
 ## Example: geotagging race-event photos
 
@@ -134,20 +152,6 @@ track-time-tagger \
 
 For a single input image, `--output` is treated as the destination directory for that image. Backups, when enabled, are created beside the copied output image.
 
-## Optional ExifTool backend
-
-Track Time Tagger uses its integrated Rust EXIF writer by default. If a particular camera file is not handled correctly, install ExifTool and opt into its broader metadata support:
-
-```bash
-track-time-tagger \
-  --track activity.gpx \
-  --images ./photos \
-  --recursive \
-  --exiftool
-```
-
-The `--exiftool` option is the only mode that requires the external Perl-based ExifTool command.
-
 ## Camera clock offset
 
 If the camera was 37 seconds slow, add 37 seconds before matching:
@@ -171,10 +175,14 @@ If the camera was two minutes fast, subtract 120 seconds:
 - `--yes` accepts all valid matches.
 - `--output DIR` writes updated copies under `DIR` and leaves input images unchanged.
 - `--no-backup` disables the `<image>_original` backup for either metadata writer. Leave it off initially.
-- Supported input images are JPEG and TIFF. HEIC/AVIF support would require a different EXIF-reading path, although ExifTool itself can handle many additional formats.
+- Supported input images are JPEG and TIFF.
 
 ## Important timezone note
 
 Standard EXIF `DateTimeOriginal` usually has no timezone. FIT and GPX timestamps represent an absolute time. Therefore `--timezone` must describe the timezone in which the camera clock was set when the photos were taken.
 
 During an ambiguous fall daylight-saving transition, the tool refuses the timestamp rather than silently choosing the wrong UTC instant.
+
+## Advanced optional backend
+
+The standard installation uses only the integrated Rust metadata writer. For the optional ExifTool backend, see [the advanced ExifTool guide](docs/exiftool-backend.md).

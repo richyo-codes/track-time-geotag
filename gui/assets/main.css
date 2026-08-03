@@ -1,0 +1,80 @@
+:root {
+  color: #17232d;
+  background: #f1f4f2;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { min-width: 320px; margin: 0; }
+.page { max-width: 860px; margin: 0 auto; padding: 1.25rem 1.25rem 2.5rem; }
+.hero { margin-bottom: 1.6rem; padding: 1.1rem 1.25rem 1.35rem; border: 1px solid #cbd9d0; border-radius: 16px; background: linear-gradient(135deg, #173b38, #236b58); color: #f6fffa; box-shadow: 0 14px 32px rgb(23 59 56 / 16%); }
+.titlebar { display: flex; align-items: center; gap: .8rem; }
+.brand-logo { display: block; flex: 0 0 2.6rem; width: 2.6rem; height: 2.6rem; border-radius: 9px; object-fit: cover; }
+.brand-copy { min-width: 0; }
+.eyebrow { margin: 0 0 .15rem; color: #d8f36e; font-size: .68rem; font-weight: 800; letter-spacing: .14em; }
+h1 { margin: 0; font-size: clamp(1.35rem, 4vw, 2.1rem); line-height: 1.05; letter-spacing: -.035em; }
+h2 { margin-top: 0; }
+.app-status { margin-left: auto; padding: .35rem .55rem; border: 1px solid rgb(216 243 110 / 55%); border-radius: 999px; color: #d8f36e; font-size: .66rem; font-weight: 800; letter-spacing: .08em; white-space: nowrap; }
+.learn-more { padding: .35rem .2rem; border: 0; background: transparent; color: #f6fffa; font: inherit; font-size: .8rem; font-weight: 700; text-decoration: underline; text-underline-offset: .2rem; white-space: nowrap; }
+.lede { max-width: 44rem; margin: 1rem 0 0 3.4rem; color: #d9ebe1; font-size: 1rem; line-height: 1.5; }
+.card { margin: 1rem 0; padding: 1.35rem; background: #fff; border: 1px solid #d5e0d9; border-radius: 14px; box-shadow: 0 8px 24px rgb(24 64 48 / 5%); }
+.tabs { display: flex; gap: .5rem; margin-bottom: 1rem; }
+.tab { padding: .6rem .85rem; border: 1px solid #b8c9bf; border-radius: 7px; background: #fff; color: #475569; font: inherit; }
+.tab.active { border-color: #16705a; background: #16705a; color: #fff; font-weight: 700; }
+.drop-zone { display: grid; place-items: center; min-height: 7rem; margin: 1rem 0; padding: 1rem; border: 2px dashed #78a58f; border-radius: 9px; background: #f4faf6; color: #16705a; font-weight: 700; }
+.field { display: grid; gap: .45rem; margin-top: 1rem; font-weight: 650; }
+input { width: 100%; padding: .65rem; border: 1px solid #b8c9bf; border-radius: 7px; background: #fff; font: inherit; }
+.settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+.settings .field { margin-top: 0; }
+.muted, .footnote { color: #64748b; line-height: 1.5; }
+.selection-count { margin-bottom: .35rem; color: #16705a; font-weight: 700; }
+.selection-list { max-height: 10rem; margin: 0; padding-left: 1.25rem; overflow-y: auto; color: #475569; }
+.privacy { margin: 1.5rem 0 0; padding: .9rem 1rem; border-top: 1px solid #d5e0d9; color: #64748b; font-size: .85rem; line-height: 1.45; }
+.privacy h2 { margin: 0; color: #475569; font-size: .95rem; }
+.privacy p { margin: .35rem 0 0; }
+li { margin: .55rem 0; line-height: 1.4; }
+.primary { width: 100%; padding: .9rem 1rem; border: 0; border-radius: 8px; background: #16705a; color: #fff; font: inherit; font-weight: 700; }
+.primary:disabled { cursor: not-allowed; opacity: .58; }
+.action-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .75rem; }
+.secondary { width: 100%; padding: .9rem 1rem; border: 1px solid #16705a; border-radius: 8px; background: #fff; color: #16705a; font: inherit; font-weight: 700; }
+.secondary:disabled { cursor: not-allowed; opacity: .58; }
+.status { padding: .9rem; border-radius: 8px; background: #e6f4eb; color: #14532d; line-height: 1.45; }
+.preview-grid { display: flex; flex-wrap: wrap; gap: .8rem; align-items: flex-start; }
+.preview { margin: 0; }
+.preview img { border-radius: 8px; background: #e2e8f0; }
+.preview figcaption { display: grid; gap: .2rem; margin-top: .4rem; color: #475569; font-size: .75rem; }
+.preview figcaption strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.preview-status { color: #16705a; line-height: 1.25; }
+.preview-map { color: #0f5e9c; font-weight: 700; text-decoration: none; }
+.preview-map:hover { text-decoration: underline; }
+.learn { margin: 1rem 0; padding: 1.5rem; border: 1px solid #d5e0d9; border-radius: 14px; background: #fff; box-shadow: 0 8px 24px rgb(24 64 48 / 5%); }
+.learn-heading { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
+.learn-heading h2 { max-width: 35rem; margin-bottom: 0; font-size: clamp(1.4rem, 3vw, 2rem); letter-spacing: -.03em; }
+.learn-lede { max-width: 45rem; color: #475569; font-size: 1.05rem; line-height: 1.6; }
+.use-case-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+.use-case { padding: 1.1rem; border: 1px solid #d5e0d9; border-radius: 10px; background: #f8fbf9; }
+.use-case-label { margin: 0; color: #16705a; font-size: .7rem; font-weight: 800; letter-spacing: .1em; }
+.use-case h3, .learn-note h3 { margin: .5rem 0; color: #173b38; font-size: 1.08rem; }
+.use-case p, .use-case li, .learn-note p { color: #475569; line-height: 1.5; }
+.use-case ol { margin: .85rem 0 0; padding-left: 1.25rem; }
+.use-case li { margin: .45rem 0; }
+.learn-note { margin-top: 1rem; padding: 1rem 1.1rem; border-left: 4px solid #d8f36e; background: #edf5ef; }
+.learn-note h3 { margin-top: 0; }
+.learn-note p { margin-bottom: 0; }
+.cli-note { margin-top: 1rem; padding: 1rem 1.1rem; border: 1px solid #b9d6cb; border-radius: 9px; background: #f8fbf9; }
+.cli-note h3 { margin: 0 0 .35rem; color: #173b38; font-size: 1rem; }
+.cli-note p { margin: 0; color: #475569; line-height: 1.5; }
+.compact { width: auto; padding: .6rem .85rem; white-space: nowrap; }
+.site-footer { display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #d5e0d9; color: #7a8b83; font-size: .72rem; letter-spacing: .03em; }
+.site-footer a { color: #16705a; font-weight: 700; text-decoration: none; }
+.site-footer a:hover { text-decoration: underline; }
+
+@media (max-width: 560px) {
+  .page { padding: .75rem .75rem 2rem; }
+  .hero { padding: 1rem; }
+  .app-status { align-self: flex-start; font-size: .58rem; }
+  .learn-more { font-size: .72rem; }
+  .lede { margin-left: 0; }
+  .learn-heading { flex-direction: column; }
+  .site-footer { flex-direction: column; gap: .35rem; }
+}
