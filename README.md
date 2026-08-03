@@ -35,6 +35,13 @@ The binary will be at:
 target/release/track-time-tagger
 ```
 
+## Automation and releases
+
+GitHub Actions validates formatting, tests, Clippy, and an optimized CLI build
+on every push and pull request. Pushing a version tag such as `v0.1.0` creates
+a GitHub release with native CLI archives for Linux x86_64, macOS ARM64, and
+Windows x86_64.
+
 ## Optional local GUI (early preview)
 
 The CLI remains the primary application. An optional Dioxus GUI lives in
