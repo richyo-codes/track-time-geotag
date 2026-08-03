@@ -9,6 +9,7 @@ const APP_CSS: &str = include_str!("../assets/main.css");
 enum Tab {
     Tag,
     Preview,
+    Learn,
 }
 
 #[derive(Clone, PartialEq)]
@@ -38,13 +39,11 @@ fn App() -> Element {
     let mut track_file = use_signal(|| None::<FileData>);
     let mut photos = use_signal(Vec::<FileData>::new);
     let previews = use_signal(Vec::<Preview>::new);
-    let mut timezone = use_signal(|| "America/Toronto".to_string());
-    let mut offset_seconds = use_signal(|| "0".to_string());
-    let mut max_gap_seconds = use_signal(|| "300".to_string());
-    let mut status = use_signal(String::new);
-    let mut busy = use_signal(|| false);
-
-    let ready = track_file().is_some() && !photos().is_empty() && !busy();
+    let timezone = use_signal(|| "America/Toronto".to_string());
+    let offset_seconds = use_signal(|| "0".to_string());
+    let max_gap_seconds = use_signal(|| "300".to_string());
+    let status = use_signal(String::new);
+    let busy = use_signal(|| false);
 
     rsx! {
         document::Title { "Track Time Tagger" }
@@ -67,6 +66,7 @@ fn App() -> Element {
                         h1 { "Photo geotagging, on your terms" }
                     }
                     span { class: "app-status", "LOCAL ONLY" }
+                    button { class: "learn-more", onclick: move |_| tab.set(Tab::Learn), "Learn more" }
                 }
                 p { class: "lede", "Match camera timestamps to a FIT or GPX route, then download GPS-tagged JPEG copies. Nothing is uploaded." }
             }
@@ -128,70 +128,13 @@ fn App() -> Element {
                     }
                 }
 
-                section { class: "card", aria_label: "Matching settings",
-                    h2 { "2. Match settings" }
-                    div { class: "settings",
-                        label { class: "field", span { "Camera timezone" }
-                            input { r#type: "text", value: "{timezone}", oninput: move |event| timezone.set(event.value()) }
-                        }
-                        label { class: "field", span { "Camera offset (seconds)" }
-                            input { r#type: "number", value: "{offset_seconds}", oninput: move |event| offset_seconds.set(event.value()) }
-                        }
-                        label { class: "field", span { "Maximum gap (seconds)" }
-                            input { r#type: "number", value: "{max_gap_seconds}", oninput: move |event| max_gap_seconds.set(event.value()) }
-                        }
-                    }
-                }
-
-                div { class: "action-row",
-                button {
-                    class: "secondary", disabled: !ready,
-                    onclick: move |_| {
-                        let Some(track_file) = track_file() else { return };
-                        let photos = photos();
-                        let timezone = timezone();
-                        let offset_seconds = offset_seconds();
-                        let max_gap_seconds = max_gap_seconds();
-                            busy.set(true);
-                            status.set("Analyzing selected photos without writing…".to_string());
-                            spawn_task(async move {
-                            let (summary, updates) = dry_run(
-                                track_file, photos, timezone, offset_seconds, max_gap_seconds,
-                            ).await;
-                            annotate_previews(previews, updates);
-                            status.set(summary);
-                            tab.set(Tab::Preview);
-                            busy.set(false);
-                        });
-                    },
-                    "Dry run: analyze matches"
-                }
-                button {
-                    class: "primary", disabled: !ready,
-                    onclick: move |_| {
-                        let Some(track_file) = track_file() else { return };
-                        let photos = photos();
-                        let timezone = timezone();
-                        let offset_seconds = offset_seconds();
-                        let max_gap_seconds = max_gap_seconds();
-                        busy.set(true);
-                        status.set("Reading the selected files…".to_string());
-                        spawn_task(async move {
-                            let result = tag_and_download(track_file, photos, timezone, offset_seconds, max_gap_seconds).await;
-                            status.set(result);
-                            busy.set(false);
-                        });
-                    },
-                    "Match and download copies"
-                }
-                }
-                if !status().is_empty() { p { class: "status", "{status}" } }
+                MatchControls { track_file, photos, timezone, offset_seconds, max_gap_seconds, status, busy, previews, tab }
 
                 section { class: "privacy", aria_label: "Privacy promise",
                     h2 { "Private by design" }
                     p { "Your files are read only in this browser tab. No account, analytics, or third-party API calls are used in local mode, and originals are never overwritten." }
                 }
-            } else {
+            } else if tab() == Tab::Preview {
                 section { class: "card", aria_label: "Local photo previews",
                     h2 { "Review photo matches" }
                     p { class: "muted", "These previews are created from the JPEG files selected on this device. Run a dry run to annotate each proposed GPS match." }
@@ -220,6 +163,46 @@ fn App() -> Element {
                         }
                     }
                 }
+                MatchControls { track_file, photos, timezone, offset_seconds, max_gap_seconds, status, busy, previews, tab }
+            } else {
+                section { class: "learn", aria_label: "How Track Time Tagger works",
+                    div { class: "learn-heading",
+                        div {
+                            p { class: "eyebrow", "HOW IT WORKS" }
+                            h2 { "A camera records the moment. A track records the place." }
+                        }
+                        button { class: "secondary compact", onclick: move |_| tab.set(Tab::Tag), "Start tagging" }
+                    }
+                    p { class: "learn-lede", "Track Time Tagger joins those two records using their timestamps, then writes the matched GPS position into a downloadable JPEG copy." }
+
+                    div { class: "use-case-grid",
+                        article { class: "use-case",
+                            p { class: "use-case-label", "RACE-EVENT PHOTOS" }
+                            h3 { "Give purchased race photos their place on the course" }
+                            p { "A photographer's camera can have an accurate clock without GPS. The runner or other subject records their activity with a Garmin watch or GPS device, then provides its FIT file or GPX export." }
+                            ol {
+                                li { "Collect the photographer's JPEGs and the subject's FIT or GPX track." }
+                                li { "Run a dry run and check the proposed locations at the finish, aid stations, and course turns." }
+                                li { "Download GPS-tagged copies once the timing looks right." }
+                            }
+                        }
+                        article { class: "use-case",
+                            p { class: "use-case-label", "HIKING & BIRDWATCHING" }
+                            h3 { "Pair a GPS-less SLR with a phone or watch" }
+                            p { "Carry the camera that takes the photo you want, while an Android phone running OpenTracks or a GPS watch records the outing independently." }
+                            ol {
+                                li { "Keep the camera clock accurate and record the outing as a FIT or GPX track." }
+                                li { "Match the track to the SLR's timestamped JPEGs after the trip." }
+                                li { "Use the dry run to confirm each location before saving copies." }
+                            }
+                        }
+                    }
+
+                    section { class: "learn-note",
+                        h3 { "What you need" }
+                        p { "Timestamped JPEG photos, a timestamped FIT or GPX track, and the camera's timezone. A camera offset can correct a clock that was consistently fast or slow." }
+                    }
+                }
             }
             footer { class: "site-footer",
                 span { "Track Time Tagger" }
@@ -227,6 +210,81 @@ fn App() -> Element {
                 span { "Local-first processing" }
             }
         }
+    }
+}
+
+#[component]
+fn MatchControls(
+    track_file: Signal<Option<FileData>>,
+    photos: Signal<Vec<FileData>>,
+    mut timezone: Signal<String>,
+    mut offset_seconds: Signal<String>,
+    mut max_gap_seconds: Signal<String>,
+    mut status: Signal<String>,
+    mut busy: Signal<bool>,
+    previews: Signal<Vec<Preview>>,
+    mut tab: Signal<Tab>,
+) -> Element {
+    let ready = track_file().is_some() && !photos().is_empty() && !busy();
+
+    rsx! {
+        section { class: "card", aria_label: "Matching settings",
+            h2 { "2. Match settings" }
+            div { class: "settings",
+                label { class: "field", span { "Camera timezone" }
+                    input { r#type: "text", value: "{timezone}", oninput: move |event| timezone.set(event.value()) }
+                }
+                label { class: "field", span { "Camera offset (seconds)" }
+                    input { r#type: "number", value: "{offset_seconds}", oninput: move |event| offset_seconds.set(event.value()) }
+                }
+                label { class: "field", span { "Maximum gap (seconds)" }
+                    input { r#type: "number", value: "{max_gap_seconds}", oninput: move |event| max_gap_seconds.set(event.value()) }
+                }
+            }
+        }
+        div { class: "action-row",
+            button {
+                class: "secondary", disabled: !ready,
+                onclick: move |_| {
+                    let Some(track_file) = track_file() else { return };
+                    let photos = photos();
+                    let timezone = timezone();
+                    let offset_seconds = offset_seconds();
+                    let max_gap_seconds = max_gap_seconds();
+                    busy.set(true);
+                    status.set("Analyzing selected photos without writing…".to_string());
+                    spawn_task(async move {
+                        let (summary, updates) = dry_run(
+                            track_file, photos, timezone, offset_seconds, max_gap_seconds,
+                        ).await;
+                        annotate_previews(previews, updates);
+                        status.set(summary);
+                        tab.set(Tab::Preview);
+                        busy.set(false);
+                    });
+                },
+                "Dry run: analyze matches"
+            }
+            button {
+                class: "primary", disabled: !ready,
+                onclick: move |_| {
+                    let Some(track_file) = track_file() else { return };
+                    let photos = photos();
+                    let timezone = timezone();
+                    let offset_seconds = offset_seconds();
+                    let max_gap_seconds = max_gap_seconds();
+                    busy.set(true);
+                    status.set("Reading the selected files…".to_string());
+                    spawn_task(async move {
+                        let result = tag_and_download(track_file, photos, timezone, offset_seconds, max_gap_seconds).await;
+                        status.set(result);
+                        busy.set(false);
+                    });
+                },
+                "Match and download copies"
+            }
+        }
+        if !status().is_empty() { p { class: "status", "{status}" } }
     }
 }
 

@@ -71,11 +71,10 @@ before using the download action. A matched coordinate can be clicked to open
 that location in OpenStreetMap; doing so shares that coordinate with
 OpenStreetMap.
 
-The page also sends a defense-in-depth Content Security Policy that disables
-network connections from the application (`connect-src 'none'`) and restricts
-images to local data/blob content. A CSP cannot protect against a compromised
-host serving a different application, so an offline/PWA or desktop build gives
-the strongest deployment boundary.
+The application requests a restrictive Content Security Policy as a best-effort
+defense in depth measure. We are working to improve this protection; it is not
+yet a security boundary for a hosted site. An offline/PWA or desktop build
+provides a stronger deployment boundary.
 
 The matching and browser-compatible JPEG writer live in the shared
 `track-time-tagger-core` crate. TIFF output, in-place desktop writes, and the

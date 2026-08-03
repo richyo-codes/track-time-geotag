@@ -18,8 +18,9 @@ The web release supports JPEG output. The current in-memory EXIF writer path is 
 - No image, track, or GPS data is uploaded by local mode.
 - No analytics, telemetry, advertising, or third-party API calls are included in local mode.
 - The application only accesses files selected by the user.
-- The web UI uses a defense-in-depth Content Security Policy with no network
-  connections from the application and local-only image sources.
+- The application requests a restrictive Content Security Policy as a best-effort
+  defense in depth measure. We are working to improve this protection; it is
+  not yet a security boundary for a hosted deployment.
 - Map links are optional; opening one sends the selected coordinates to that map provider.
 - Immich and other repository integrations are separate opt-in networked modes, with the destination and data sent explained before authorization.
 
