@@ -65,8 +65,10 @@ fn App() -> Element {
                         p { class: "eyebrow", "TRACK TIME TAGGER" }
                         h1 { "Photo geotagging, on your terms" }
                     }
-                    span { class: "app-status", "LOCAL ONLY" }
-                    button { class: "learn-more", onclick: move |_| tab.set(Tab::Learn), "Learn more" }
+                    div { class: "hero-actions",
+                        span { class: "app-status", "LOCAL ONLY" }
+                        button { class: "learn-more", onclick: move |_| tab.set(Tab::Learn), "Learn more" }
+                    }
                 }
                 p { class: "lede", "Match camera timestamps to a FIT or GPX route, then download GPS-tagged JPEG copies. Nothing is uploaded." }
             }
@@ -171,9 +173,9 @@ fn App() -> Element {
                             p { class: "eyebrow", "HOW IT WORKS" }
                             h2 { "A camera records the moment. A track records the place." }
                         }
-                        button { class: "secondary compact", onclick: move |_| tab.set(Tab::Tag), "Start tagging" }
                     }
                     p { class: "learn-lede", "Track Time Tagger joins those two records using their timestamps, then writes the matched GPS position into a downloadable JPEG copy." }
+                    button { class: "primary learn-cta", onclick: move |_| tab.set(Tab::Tag), "Start tagging" }
 
                     div { class: "use-case-grid",
                         article { class: "use-case",
