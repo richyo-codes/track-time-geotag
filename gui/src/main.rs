@@ -16,6 +16,16 @@ struct Preview {
     name: String,
     data_url: String,
     status: String,
+    coordinates: Option<String>,
+    osm_url: Option<String>,
+}
+
+#[derive(Clone)]
+struct PreviewUpdate {
+    name: String,
+    status: String,
+    coordinates: Option<String>,
+    osm_url: Option<String>,
 }
 
 fn main() {
@@ -38,6 +48,7 @@ fn App() -> Element {
 
     rsx! {
         document::Title { "Track Time Tagger" }
+        document::Link { rel: "icon", href: "favicon.png", r#type: "image/png" }
         document::Style { "{APP_CSS}" }
         document::Meta {
             http_equiv: "Content-Security-Policy",
@@ -46,7 +57,11 @@ fn App() -> Element {
         main { class: "page",
             header { class: "hero",
                 div { class: "titlebar",
-                    div { class: "brand-mark", "TT" }
+                    img {
+                        class: "brand-logo",
+                        src: "logo.png",
+                        alt: "Track Time Tagger logo"
+                    }
                     div { class: "brand-copy",
                         p { class: "eyebrow", "TRACK TIME TAGGER" }
                         h1 { "Photo geotagging, on your terms" }
@@ -56,9 +71,11 @@ fn App() -> Element {
                 p { class: "lede", "Match camera timestamps to a FIT or GPX route, then download GPS-tagged JPEG copies. Nothing is uploaded." }
             }
 
-            nav { class: "tabs", aria_label: "GUI sections",
-                button { class: if tab() == Tab::Tag { "tab active" } else { "tab" }, onclick: move |_| tab.set(Tab::Tag), "Tag photos" }
-                button { class: if tab() == Tab::Preview { "tab active" } else { "tab" }, onclick: move |_| tab.set(Tab::Preview), "Photo previews" }
+            if !previews().is_empty() {
+                nav { class: "tabs", aria_label: "GUI sections",
+                    button { class: if tab() == Tab::Tag { "tab active" } else { "tab" }, onclick: move |_| tab.set(Tab::Tag), "Set up match" }
+                    button { class: if tab() == Tab::Preview { "tab active" } else { "tab" }, onclick: move |_| tab.set(Tab::Preview), "Review photos" }
+                }
             }
 
             if tab() == Tab::Tag {
@@ -107,6 +124,7 @@ fn App() -> Element {
                     } else {
                         p { class: "selection-count", "{photos().len()} image(s) selected" }
                         ul { class: "selection-list", for file in photos() { li { "{file.name()}" } } }
+                        p { class: "muted", "Next, add a GPS track and run a dry run to review the proposed matches." }
                     }
                 }
 
@@ -142,6 +160,7 @@ fn App() -> Element {
                             ).await;
                             annotate_previews(previews, updates);
                             status.set(summary);
+                            tab.set(Tab::Preview);
                             busy.set(false);
                         });
                     },
@@ -174,8 +193,8 @@ fn App() -> Element {
                 }
             } else {
                 section { class: "card", aria_label: "Local photo previews",
-                    h2 { "Selected photo previews" }
-                    p { class: "muted", "These previews are created from the JPEG files selected on this device. They are not uploaded." }
+                    h2 { "Review photo matches" }
+                    p { class: "muted", "These previews are created from the JPEG files selected on this device. Run a dry run to annotate each proposed GPS match." }
                     if previews().is_empty() {
                         p { "No photos selected yet." }
                     } else {
@@ -186,6 +205,15 @@ fn App() -> Element {
                                     figcaption {
                                         strong { "{preview.name}" }
                                         span { class: "preview-status", "{preview.status}" }
+                                        if let (Some(coordinates), Some(osm_url)) = (&preview.coordinates, &preview.osm_url) {
+                                            a {
+                                                class: "preview-map",
+                                                href: "{osm_url}",
+                                                target: "_blank",
+                                                rel: "noopener noreferrer",
+                                                "{coordinates} ↗"
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -226,6 +254,8 @@ fn load_previews(files: Vec<FileData>, mut previews: Signal<Vec<Preview>>, mut b
                     name: file.name(),
                     data_url: format!("data:image/jpeg;base64,{}", STANDARD.encode(bytes)),
                     status: "Not analyzed".to_string(),
+                    coordinates: None,
+                    osm_url: None,
                 });
             }
         }
@@ -234,11 +264,13 @@ fn load_previews(files: Vec<FileData>, mut previews: Signal<Vec<Preview>>, mut b
     });
 }
 
-fn annotate_previews(mut previews: Signal<Vec<Preview>>, updates: Vec<(String, String)>) {
+fn annotate_previews(mut previews: Signal<Vec<Preview>>, updates: Vec<PreviewUpdate>) {
     let mut current = previews();
     for preview in &mut current {
-        if let Some((_, status)) = updates.iter().find(|(name, _)| name == &preview.name) {
-            preview.status = status.clone();
+        if let Some(update) = updates.iter().find(|update| update.name == preview.name) {
+            preview.status = update.status.clone();
+            preview.coordinates = update.coordinates.clone();
+            preview.osm_url = update.osm_url.clone();
         }
     }
     previews.set(current);
@@ -258,7 +290,7 @@ async fn dry_run(
     timezone_name: String,
     offset_seconds: String,
     max_gap_seconds: String,
-) -> (String, Vec<(String, String)>) {
+) -> (String, Vec<PreviewUpdate>) {
     let timezone = match timezone_name.parse() {
         Ok(value) => value,
         Err(_) => {
@@ -307,7 +339,12 @@ async fn dry_run(
         let bytes = match photo.read_bytes().await {
             Ok(bytes) => bytes,
             Err(error) => {
-                updates.push((name, format!("ERROR: could not read ({error})")));
+                updates.push(PreviewUpdate {
+                    name,
+                    status: format!("ERROR: could not read ({error})"),
+                    coordinates: None,
+                    osm_url: None,
+                });
                 continue;
             }
         };
@@ -329,19 +366,32 @@ async fn dry_run(
                 } else {
                     " exact"
                 };
-                updates.push((
+                let coordinates =
+                    format!("{:.5}, {:.5}", analysis.matched.lat, analysis.matched.lon);
+                updates.push(PreviewUpdate {
                     name,
-                    format!(
-                        "{prefix}: {:.5}, {:.5}{suffix}",
-                        analysis.matched.lat, analysis.matched.lon
-                    ),
-                ));
+                    status: format!("{prefix}{suffix}"),
+                    osm_url: Some(openstreetmap_url(
+                        analysis.matched.lat,
+                        analysis.matched.lon,
+                    )),
+                    coordinates: Some(coordinates),
+                });
                 matches += 1;
             }
-            Err(error) => updates.push((name, format!("SKIP: {error:#}"))),
+            Err(error) => updates.push(PreviewUpdate {
+                name,
+                status: format!("SKIP: {error:#}"),
+                coordinates: None,
+                osm_url: None,
+            }),
         }
     }
     (format!("Dry run complete: {matches} match(es) analyzed. Review the Photo previews tab before downloading."), updates)
+}
+
+fn openstreetmap_url(lat: f64, lon: f64) -> String {
+    format!("https://www.openstreetmap.org/?mlat={lat:.7}&mlon={lon:.7}#map=18/{lat:.7}/{lon:.7}")
 }
 
 async fn tag_and_download(

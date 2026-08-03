@@ -9,7 +9,7 @@ body { min-width: 320px; margin: 0; }
 .page { max-width: 860px; margin: 0 auto; padding: 1.25rem 1.25rem 2.5rem; }
 .hero { margin-bottom: 1.6rem; padding: 1.1rem 1.25rem 1.35rem; border: 1px solid #cbd9d0; border-radius: 16px; background: linear-gradient(135deg, #173b38, #236b58); color: #f6fffa; box-shadow: 0 14px 32px rgb(23 59 56 / 16%); }
 .titlebar { display: flex; align-items: center; gap: .8rem; }
-.brand-mark { display: grid; flex: 0 0 2.6rem; place-items: center; width: 2.6rem; height: 2.6rem; border-radius: 9px; background: #d8f36e; color: #173b38; font-size: .85rem; font-weight: 900; letter-spacing: -.08em; }
+.brand-logo { display: block; flex: 0 0 2.6rem; width: 2.6rem; height: 2.6rem; border-radius: 9px; object-fit: cover; }
 .brand-copy { min-width: 0; }
 .eyebrow { margin: 0 0 .15rem; color: #d8f36e; font-size: .68rem; font-weight: 800; letter-spacing: .14em; }
 h1 { margin: 0; font-size: clamp(1.35rem, 4vw, 2.1rem); line-height: 1.05; letter-spacing: -.035em; }
@@ -44,6 +44,8 @@ li { margin: .55rem 0; line-height: 1.4; }
 .preview figcaption { display: grid; gap: .2rem; margin-top: .4rem; color: #475569; font-size: .75rem; }
 .preview figcaption strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .preview-status { color: #16705a; line-height: 1.25; }
+.preview-map { color: #0f5e9c; font-weight: 700; text-decoration: none; }
+.preview-map:hover { text-decoration: underline; }
 .site-footer { display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #d5e0d9; color: #7a8b83; font-size: .72rem; letter-spacing: .03em; }
 
 @media (max-width: 560px) {

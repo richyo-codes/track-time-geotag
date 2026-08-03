@@ -45,6 +45,18 @@ The desktop build uses the system WebView and may require platform packages.
 The optional ExifTool backend is intentionally excluded from web/WASM; see
 [the advanced backend guide](../docs/exiftool-backend.md).
 
+## GitHub Pages deployment
+
+The repository includes a GitHub Actions workflow that builds the release WASM
+GUI and deploys it to GitHub Pages on pushes to `main`. In the repository’s
+Pages settings, select **GitHub Actions** as the publishing source before the
+first deployment. The resulting project site is served below the repository
+name, and the workflow supplies that base path to Dioxus.
+
+The hosted page is still local-first: selected photos and tracks are processed
+in the visitor’s browser. GitHub receives ordinary requests for the static app
+files, but not the selected files or their derived GPS locations.
+
 ## Current status
 
 The web GUI supports JPEG input: select or drag in one FIT/GPX track and one or
@@ -55,7 +67,9 @@ never modified.
 
 Use “Dry run: analyze matches” first to annotate each thumbnail with its match,
 skip reason, or error. This makes it possible to manually verify the results
-before using the download action.
+before using the download action. A matched coordinate can be clicked to open
+that location in OpenStreetMap; doing so shares that coordinate with
+OpenStreetMap.
 
 The page also sends a defense-in-depth Content Security Policy that disables
 network connections from the application (`connect-src 'none'`) and restricts
