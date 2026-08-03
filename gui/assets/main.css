@@ -61,8 +61,13 @@ li { margin: .55rem 0; line-height: 1.4; }
 .learn-note { margin-top: 1rem; padding: 1rem 1.1rem; border-left: 4px solid #d8f36e; background: #edf5ef; }
 .learn-note h3 { margin-top: 0; }
 .learn-note p { margin-bottom: 0; }
+.cli-note { margin-top: 1rem; padding: 1rem 1.1rem; border: 1px solid #b9d6cb; border-radius: 9px; background: #f8fbf9; }
+.cli-note h3 { margin: 0 0 .35rem; color: #173b38; font-size: 1rem; }
+.cli-note p { margin: 0; color: #475569; line-height: 1.5; }
 .compact { width: auto; padding: .6rem .85rem; white-space: nowrap; }
 .site-footer { display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #d5e0d9; color: #7a8b83; font-size: .72rem; letter-spacing: .03em; }
+.site-footer a { color: #16705a; font-weight: 700; text-decoration: none; }
+.site-footer a:hover { text-decoration: underline; }
 
 @media (max-width: 560px) {
   .page { padding: .75rem .75rem 2rem; }

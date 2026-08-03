@@ -202,12 +202,21 @@ fn App() -> Element {
                         h3 { "What you need" }
                         p { "Timestamped JPEG photos, a timestamped FIT or GPX track, and the camera's timezone. A camera offset can correct a clock that was consistently fast or slow." }
                     }
+                    section { class: "cli-note",
+                        h3 { "Processing a large collection?" }
+                        p { "The command-line version is designed for bulk processing: it can scan image directories recursively, preserve their folder layout in a separate output directory, and work with JPEG and TIFF files." }
+                    }
                 }
             }
             footer { class: "site-footer",
                 span { "Track Time Tagger" }
                 span { "FIT / GPX → JPEG GPS" }
-                span { "Local-first processing" }
+                a {
+                    href: "https://github.com/richyo-codes/track-time-geotag",
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                    "GitHub ↗"
+                }
             }
         }
     }
