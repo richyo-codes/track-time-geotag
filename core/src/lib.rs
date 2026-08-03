@@ -36,6 +36,14 @@ pub struct GeotaggedImage {
     pub bytes: Vec<u8>,
 }
 
+#[derive(Debug, Clone)]
+pub struct ImageAnalysis {
+    pub exif_local_time: NaiveDateTime,
+    pub image_utc: DateTime<Utc>,
+    pub matched: Match,
+    pub already_has_gps: bool,
+}
+
 pub fn load_track_from_bytes(name: &str, bytes: &[u8]) -> Result<Vec<TrackPoint>> {
     let extension = name.rsplit('.').next().unwrap_or_default();
     if extension.eq_ignore_ascii_case("fit") {
@@ -55,21 +63,43 @@ pub fn geotag_jpeg(
     overwrite_gps: bool,
     track: &[TrackPoint],
 ) -> Result<GeotaggedImage> {
-    let (local_time, already_has_gps) = read_jpeg_info(&image)?;
-    if already_has_gps && !overwrite_gps {
+    let analysis = analyze_jpeg(
+        &image,
+        timezone,
+        camera_offset_seconds,
+        max_gap_seconds,
+        track,
+    )?;
+    if analysis.already_has_gps && !overwrite_gps {
         bail!("already contains GPS metadata")
     }
+    let mut bytes = image;
+    write_gps_to_jpeg(&mut bytes, &analysis.matched)?;
+    Ok(GeotaggedImage {
+        exif_local_time: analysis.exif_local_time,
+        image_utc: analysis.image_utc,
+        matched: analysis.matched,
+        bytes,
+    })
+}
+
+pub fn analyze_jpeg(
+    image: &[u8],
+    timezone: Tz,
+    camera_offset_seconds: i64,
+    max_gap_seconds: i64,
+    track: &[TrackPoint],
+) -> Result<ImageAnalysis> {
+    let (local_time, already_has_gps) = read_jpeg_info(image)?;
     let image_utc =
         local_naive_to_utc(local_time, timezone)? + Duration::seconds(camera_offset_seconds);
     let matched = match_track(track, image_utc, max_gap_seconds)
         .context("outside the track or exceeds the maximum gap")?;
-    let mut bytes = image;
-    write_gps_to_jpeg(&mut bytes, &matched)?;
-    Ok(GeotaggedImage {
+    Ok(ImageAnalysis {
         exif_local_time: local_time,
         image_utc,
         matched,
-        bytes,
+        already_has_gps,
     })
 }
 

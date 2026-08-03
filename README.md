@@ -1,6 +1,10 @@
 # track-time-tagger
 
-A small interactive Rust CLI that:
+Add GPS EXIF tags to timestamped photos by matching them to a FIT or GPX track.
+Track Time Tagger works locally: the CLI supports JPEG/TIFF, and the optional
+browser GUI produces geotagged JPEG copies without uploading photos or tracks.
+
+The primary interface is a small interactive Rust CLI that:
 
 1. parses a Garmin/ANT `.fit` file with [`fitparser`](https://github.com/stadelmanma/fitparse-rs) or a `.gpx` track with [`gpx`](https://docs.rs/gpx),
 2. reads `DateTimeOriginal` from local JPEG/TIFF images,
@@ -70,12 +74,8 @@ track-time-tagger \
   --dry-run
 ```
 
-Each match prints links like:
-
-```text
-OpenStreetMap: https://www.openstreetmap.org/?mlat=42.98&mlon=-81.24#map=18/42.98/-81.24
-Google Maps:  https://www.google.com/maps/search/?api=1&query=42.98,-81.24
-```
+Each match prints optional map-provider links for verifying its proposed
+location.
 
 ## Example: geotagging race-event photos
 

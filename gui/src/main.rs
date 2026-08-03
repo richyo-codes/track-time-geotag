@@ -1,6 +1,9 @@
 use base64::{engine::general_purpose::STANDARD, Engine};
 use dioxus::prelude::*;
 use dioxus_html::{FileData, HasFileData};
+use std::future::Future;
+
+const APP_CSS: &str = include_str!("../assets/main.css");
 
 #[derive(Clone, Copy, PartialEq)]
 enum Tab {
@@ -12,6 +15,7 @@ enum Tab {
 struct Preview {
     name: String,
     data_url: String,
+    status: String,
 }
 
 fn main() {
@@ -28,15 +32,27 @@ fn App() -> Element {
     let mut offset_seconds = use_signal(|| "0".to_string());
     let mut max_gap_seconds = use_signal(|| "300".to_string());
     let mut status = use_signal(String::new);
+    let mut busy = use_signal(|| false);
 
-    let ready = track_file().is_some() && !photos().is_empty();
+    let ready = track_file().is_some() && !photos().is_empty() && !busy();
 
     rsx! {
         document::Title { "Track Time Tagger" }
+        document::Style { "{APP_CSS}" }
+        document::Meta {
+            http_equiv: "Content-Security-Policy",
+            content: "default-src 'self'; base-uri 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; connect-src 'none'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'"
+        }
         main { class: "page",
             header { class: "hero",
-                p { class: "eyebrow", "LOCAL-ONLY GPS GEOTAGGING" }
-                h1 { "Track Time Tagger" }
+                div { class: "titlebar",
+                    div { class: "brand-mark", "TT" }
+                    div { class: "brand-copy",
+                        p { class: "eyebrow", "TRACK TIME TAGGER" }
+                        h1 { "Photo geotagging, on your terms" }
+                    }
+                    span { class: "app-status", "LOCAL ONLY" }
+                }
                 p { class: "lede", "Match camera timestamps to a FIT or GPX route, then download GPS-tagged JPEG copies. Nothing is uploaded." }
             }
 
@@ -58,7 +74,7 @@ fn App() -> Element {
                             if let Some(track) = track { track_file.set(Some(track)); }
                             if !selected_photos.is_empty() {
                                 photos.set(selected_photos.clone());
-                                load_previews(selected_photos, previews);
+                                load_previews(selected_photos, previews, busy);
                             }
                         },
                         "Drop files here"
@@ -82,7 +98,7 @@ fn App() -> Element {
                             onchange: move |event| {
                                 let selected_photos = event.files();
                                 photos.set(selected_photos.clone());
-                                load_previews(selected_photos, previews);
+                                load_previews(selected_photos, previews, busy);
                             }
                         }
                     }
@@ -109,15 +125,28 @@ fn App() -> Element {
                     }
                 }
 
-                section { class: "card privacy", aria_label: "Privacy promise",
-                    h2 { "Private by design" }
-                    ul {
-                        li { "No account, analytics, or third-party API calls in local mode." }
-                        li { "Your files are read only in this browser tab and are never uploaded." }
-                        li { "Tagging creates downloads; your original local photos are never overwritten." }
-                    }
+                div { class: "action-row",
+                button {
+                    class: "secondary", disabled: !ready,
+                    onclick: move |_| {
+                        let Some(track_file) = track_file() else { return };
+                        let photos = photos();
+                        let timezone = timezone();
+                        let offset_seconds = offset_seconds();
+                        let max_gap_seconds = max_gap_seconds();
+                            busy.set(true);
+                            status.set("Analyzing selected photos without writing…".to_string());
+                            spawn_task(async move {
+                            let (summary, updates) = dry_run(
+                                track_file, photos, timezone, offset_seconds, max_gap_seconds,
+                            ).await;
+                            annotate_previews(previews, updates);
+                            status.set(summary);
+                            busy.set(false);
+                        });
+                    },
+                    "Dry run: analyze matches"
                 }
-
                 button {
                     class: "primary", disabled: !ready,
                     onclick: move |_| {
@@ -126,15 +155,23 @@ fn App() -> Element {
                         let timezone = timezone();
                         let offset_seconds = offset_seconds();
                         let max_gap_seconds = max_gap_seconds();
+                        busy.set(true);
                         status.set("Reading the selected files…".to_string());
-                        spawn(async move {
+                        spawn_task(async move {
                             let result = tag_and_download(track_file, photos, timezone, offset_seconds, max_gap_seconds).await;
                             status.set(result);
+                            busy.set(false);
                         });
                     },
                     "Match and download copies"
                 }
+                }
                 if !status().is_empty() { p { class: "status", "{status}" } }
+
+                section { class: "privacy", aria_label: "Privacy promise",
+                    h2 { "Private by design" }
+                    p { "Your files are read only in this browser tab. No account, analytics, or third-party API calls are used in local mode, and originals are never overwritten." }
+                }
             } else {
                 section { class: "card", aria_label: "Local photo previews",
                     h2 { "Selected photo previews" }
@@ -144,14 +181,22 @@ fn App() -> Element {
                     } else {
                         div { class: "preview-grid",
                             for preview in previews() {
-                                figure { class: "preview",
-                                    img { src: "{preview.data_url}", alt: "Preview of {preview.name}" }
-                                    figcaption { "{preview.name}" }
+                                figure { class: "preview", style: "width: 200px; min-width: 200px; max-width: 200px;",
+                                    img { src: "{preview.data_url}", alt: "Preview of {preview.name}", style: "display: block; width: 200px; height: 150px; object-fit: cover;" }
+                                    figcaption {
+                                        strong { "{preview.name}" }
+                                        span { class: "preview-status", "{preview.status}" }
+                                    }
                                 }
                             }
                         }
                     }
                 }
+            }
+            footer { class: "site-footer",
+                span { "Track Time Tagger" }
+                span { "FIT / GPX → JPEG GPS" }
+                span { "Local-first processing" }
             }
         }
     }
@@ -171,19 +216,132 @@ fn split_files(files: Vec<FileData>) -> (Option<FileData>, Vec<FileData>) {
     (track, photos)
 }
 
-fn load_previews(files: Vec<FileData>, mut previews: Signal<Vec<Preview>>) {
-    spawn(async move {
+fn load_previews(files: Vec<FileData>, mut previews: Signal<Vec<Preview>>, mut busy: Signal<bool>) {
+    busy.set(true);
+    spawn_task(async move {
         let mut loaded = Vec::new();
         for file in files {
             if let Ok(bytes) = file.read_bytes().await {
                 loaded.push(Preview {
                     name: file.name(),
                     data_url: format!("data:image/jpeg;base64,{}", STANDARD.encode(bytes)),
+                    status: "Not analyzed".to_string(),
                 });
             }
         }
         previews.set(loaded);
+        busy.set(false);
     });
+}
+
+fn annotate_previews(mut previews: Signal<Vec<Preview>>, updates: Vec<(String, String)>) {
+    let mut current = previews();
+    for preview in &mut current {
+        if let Some((_, status)) = updates.iter().find(|(name, _)| name == &preview.name) {
+            preview.status = status.clone();
+        }
+    }
+    previews.set(current);
+}
+
+fn spawn_task(future: impl Future<Output = ()> + 'static) {
+    #[cfg(feature = "web")]
+    wasm_bindgen_futures::spawn_local(future);
+
+    #[cfg(not(feature = "web"))]
+    dioxus::spawn(future);
+}
+
+async fn dry_run(
+    track_file: FileData,
+    photos: Vec<FileData>,
+    timezone_name: String,
+    offset_seconds: String,
+    max_gap_seconds: String,
+) -> (String, Vec<(String, String)>) {
+    let timezone = match timezone_name.parse() {
+        Ok(value) => value,
+        Err(_) => {
+            return (
+                format!("Unknown IANA timezone: {timezone_name}"),
+                Vec::new(),
+            )
+        }
+    };
+    let offset_seconds = match offset_seconds.parse() {
+        Ok(value) => value,
+        Err(_) => {
+            return (
+                "Camera offset must be a whole number of seconds.".to_string(),
+                Vec::new(),
+            )
+        }
+    };
+    let max_gap_seconds = match max_gap_seconds.parse() {
+        Ok(value) if value >= 0 => value,
+        _ => {
+            return (
+                "Maximum gap must be zero or a positive whole number.".to_string(),
+                Vec::new(),
+            )
+        }
+    };
+    let track_bytes = match track_file.read_bytes().await {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            return (
+                format!("Could not read {}: {error}", track_file.name()),
+                Vec::new(),
+            )
+        }
+    };
+    let track =
+        match track_time_tagger_core::load_track_from_bytes(&track_file.name(), &track_bytes) {
+            Ok(track) => track,
+            Err(error) => return (format!("Could not load track: {error:#}"), Vec::new()),
+        };
+    let mut updates = Vec::new();
+    let mut matches = 0;
+    for photo in photos {
+        let name = photo.name();
+        let bytes = match photo.read_bytes().await {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                updates.push((name, format!("ERROR: could not read ({error})")));
+                continue;
+            }
+        };
+        match track_time_tagger_core::analyze_jpeg(
+            &bytes,
+            timezone,
+            offset_seconds,
+            max_gap_seconds,
+            &track,
+        ) {
+            Ok(analysis) => {
+                let prefix = if analysis.already_has_gps {
+                    "SKIP: existing GPS"
+                } else {
+                    "MATCH"
+                };
+                let suffix = if analysis.matched.interpolated {
+                    " interpolated"
+                } else {
+                    " exact"
+                };
+                updates.push((
+                    name,
+                    format!(
+                        "{prefix}: {:.5}, {:.5}{suffix}",
+                        analysis.matched.lat, analysis.matched.lon
+                    ),
+                ));
+                matches += 1;
+            }
+            Err(error) => updates.push((name, format!("SKIP: {error:#}"))),
+        }
+    }
+    (format!("Dry run complete: {matches} match(es) analyzed. Review the Photo previews tab before downloading."), updates)
 }
 
 async fn tag_and_download(

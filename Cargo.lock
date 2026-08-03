@@ -5779,6 +5779,7 @@ dependencies = [
  "js-sys",
  "track-time-tagger-core",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
 ]
 

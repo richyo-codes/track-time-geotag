@@ -53,6 +53,16 @@ more JPEGs, set the camera timezone and matching tolerances, then download one
 of the selected local photos. Existing GPS tags are skipped, and originals are
 never modified.
 
+Use “Dry run: analyze matches” first to annotate each thumbnail with its match,
+skip reason, or error. This makes it possible to manually verify the results
+before using the download action.
+
+The page also sends a defense-in-depth Content Security Policy that disables
+network connections from the application (`connect-src 'none'`) and restricts
+images to local data/blob content. A CSP cannot protect against a compromised
+host serving a different application, so an offline/PWA or desktop build gives
+the strongest deployment boundary.
+
 The matching and browser-compatible JPEG writer live in the shared
 `track-time-tagger-core` crate. TIFF output, in-place desktop writes, and the
 optional ExifTool backend remain CLI/desktop work.
