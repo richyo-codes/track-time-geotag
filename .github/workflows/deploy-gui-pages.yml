@@ -27,7 +27,15 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
+      - name: Restore Dioxus CLI cache
+        id: dioxus-cli-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/dx
+          key: ${{ runner.os }}-dioxus-cli-0.7.10
+
       - name: Install Dioxus CLI
+        if: steps.dioxus-cli-cache.outputs.cache-hit != 'true'
         run: cargo install dioxus-cli --version 0.7.10 --locked
 
       - name: Configure GitHub Pages
