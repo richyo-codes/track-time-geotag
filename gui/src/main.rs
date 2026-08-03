@@ -63,7 +63,7 @@ fn App() -> Element {
                     }
                     div { class: "brand-copy",
                         p { class: "eyebrow", "TRACK TIME TAGGER" }
-                        h1 { "Photo geotagging, on your terms" }
+                        h1 { "Add GPS to timestamped photos" }
                     }
                     div { class: "hero-actions",
                         span { class: "app-status", "LOCAL ONLY" }
@@ -84,7 +84,7 @@ fn App() -> Element {
                 section { class: "card", aria_label: "Select local files",
                     h2 { "1. Add a track and photos" }
                     p { "Choose files below, or drop one FIT/GPX track and any number of JPEGs into this area." }
-                    div {
+                    label {
                         class: "drop-zone",
                         ondragover: move |event| event.prevent_default(),
                         ondrop: move |event| {
@@ -96,7 +96,21 @@ fn App() -> Element {
                                 load_previews(selected_photos, previews, busy);
                             }
                         },
-                        "Drop files here"
+                        input {
+                            class: "drop-input",
+                            r#type: "file",
+                            accept: ".fit,.gpx,.jpg,.jpeg,application/gpx+xml,image/jpeg",
+                            multiple: true,
+                            onchange: move |event| {
+                                let (track, selected_photos) = split_files(event.files());
+                                if let Some(track) = track { track_file.set(Some(track)); }
+                                if !selected_photos.is_empty() {
+                                    photos.set(selected_photos.clone());
+                                    load_previews(selected_photos, previews, busy);
+                                }
+                            }
+                        }
+                        span { "Drop FIT, GPX, or JPEG files here — or tap to choose" }
                     }
                     label { class: "field",
                         span { "GPS track (.fit or .gpx)" }
