@@ -1,7 +1,11 @@
 use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Duration, LocalResult, NaiveDateTime, TimeZone, Utc};
 use chrono_tz::Tz;
-use clap::{Parser, ValueEnum};
+use clap::{CommandFactory, Parser, ValueEnum};
+use clap_complete::{
+    generate,
+    shells::{Bash, Fish, Zsh},
+};
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use exif::{In, Reader, Tag, Value as ExifValue};
 use fitparser::{FitDataField, Value};
@@ -25,12 +29,23 @@ enum MapProvider {
     None,
 }
 
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum CompletionShell {
+    Bash,
+    Zsh,
+    Fish,
+}
+
 #[derive(Debug, Parser)]
 #[command(version, about)]
 struct Args {
     /// FIT or GPX activity containing timestamped positions.
-    #[arg(short, long)]
-    track: PathBuf,
+    #[arg(short, long, required_unless_present = "completions")]
+    track: Option<PathBuf>,
+
+    /// Generate shell completion script and write it to stdout.
+    #[arg(long, value_enum)]
+    completions: Option<CompletionShell>,
 
     /// Image file or directory to scan.
     #[arg(short, long, default_value = ".")]
@@ -108,11 +123,19 @@ struct Match {
 
 fn main() -> Result<()> {
     let args = Args::parse();
+    if let Some(shell) = args.completions {
+        generate_completions(shell);
+        return Ok(());
+    }
+    let track_path = args
+        .track
+        .as_deref()
+        .expect("--track is required unless --completions is used");
     if args.exiftool {
         ensure_exiftool_available()?;
     }
 
-    let track = load_track(&args.track)?;
+    let track = load_track(track_path)?;
     println!(
         "Loaded {} GPS points from {} through {}",
         track.len(),
@@ -227,6 +250,30 @@ fn main() -> Result<()> {
 
     println!("\nDone: {updated} updated, {skipped} skipped.");
     Ok(())
+}
+
+fn generate_completions(shell: CompletionShell) {
+    let mut command = Args::command();
+    match shell {
+        CompletionShell::Bash => generate(
+            Bash,
+            &mut command,
+            "track-time-tagger",
+            &mut std::io::stdout(),
+        ),
+        CompletionShell::Zsh => generate(
+            Zsh,
+            &mut command,
+            "track-time-tagger",
+            &mut std::io::stdout(),
+        ),
+        CompletionShell::Fish => generate(
+            Fish,
+            &mut command,
+            "track-time-tagger",
+            &mut std::io::stdout(),
+        ),
+    }
 }
 
 fn ensure_exiftool_available() -> Result<()> {

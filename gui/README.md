@@ -62,8 +62,9 @@ files, but not the selected files or their derived GPS locations.
 The web GUI supports JPEG input: select or drag in one FIT/GPX track and one or
 more JPEGs, set the camera timezone and matching tolerances, then download one
 `geotagged-...` copy for each successful match. A separate tab shows previews
-of the selected local photos. Existing GPS tags are skipped, and originals are
-never modified.
+of the selected local photos, and the setup screen renders the selected track's
+shape locally as an SVG. Existing GPS tags are skipped, and originals are never
+modified.
 
 Use “Dry run: analyze matches” first to annotate each thumbnail with its match,
 skip reason, or error. This makes it possible to manually verify the results

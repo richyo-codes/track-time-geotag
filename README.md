@@ -35,6 +35,25 @@ The binary will be at:
 target/release/track-time-tagger
 ```
 
+## Shell completions
+
+Generate completions for the shell you use and save the script where that
+shell loads completions:
+
+```bash
+# Bash
+track-time-tagger --completions bash > ~/.local/share/bash-completion/completions/track-time-tagger
+
+# Zsh
+track-time-tagger --completions zsh > ~/.zfunc/_track-time-tagger
+
+# Fish
+track-time-tagger --completions fish > ~/.config/fish/completions/track-time-tagger.fish
+```
+
+For Zsh, add `~/.zfunc` to `fpath` if it is not already included, then restart
+the shell or reload its completion system.
+
 ## Automation and releases
 
 GitHub Actions validates formatting, tests, Clippy, and an optimized CLI build
