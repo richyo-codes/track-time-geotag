@@ -22,6 +22,7 @@ struct Preview {
     osm_url: Option<String>,
     latitude: Option<f64>,
     longitude: Option<f64>,
+    track_timestamp: Option<i64>,
 }
 
 #[derive(Clone)]
@@ -32,6 +33,7 @@ struct PreviewUpdate {
     osm_url: Option<String>,
     latitude: Option<f64>,
     longitude: Option<f64>,
+    track_timestamp: Option<i64>,
 }
 
 #[derive(Clone, PartialEq)]
@@ -60,6 +62,16 @@ fn App() -> Element {
     let analyzed = use_signal(|| None::<AnalysisApproval>);
     let mut selected_photo = use_signal(|| None::<usize>);
     let expanded_cluster = use_signal(|| None::<usize>);
+    let preview_summary = previews();
+    let matched_count = preview_summary
+        .iter()
+        .filter(|preview| preview.status.starts_with("MATCH"))
+        .count();
+    let not_matched_count = preview_summary
+        .iter()
+        .filter(|preview| preview.status.starts_with("SKIP") || preview.status.starts_with("ERROR"))
+        .count();
+    let pending_count = preview_summary.len() - matched_count - not_matched_count;
 
     rsx! {
         document::Title { "Track Time Tagger" }
@@ -193,9 +205,19 @@ fn App() -> Element {
                     h2 { "Review photo matches" }
                     p { class: "muted", "These previews are created from the JPEG files selected on this device. Run a dry run to annotate each proposed GPS match." }
                     TrackPreview { points: track_points, error: track_error, matches: previews, selected_photo, expanded_cluster }
-                    if previews().is_empty() {
+                    if preview_summary.is_empty() {
                         p { "No photos selected yet." }
                     } else {
+                        div { class: "preview-summary", aria_label: "Photo match summary",
+                            div { class: "preview-summary-title", "Photo match overview" }
+                            div { class: "preview-summary-stats",
+                                span { class: "preview-stat matched", strong { "{matched_count}" } " matched" }
+                                span { class: "preview-stat not-matched", strong { "{not_matched_count}" } " not matched" }
+                                if pending_count > 0 {
+                                    span { class: "preview-stat pending", strong { "{pending_count}" } " pending" }
+                                }
+                            }
+                        }
                         div { class: "preview-grid",
                             for (index, preview) in previews().into_iter().enumerate() {
                                 figure {
@@ -880,6 +902,7 @@ fn load_previews(files: Vec<FileData>, mut previews: Signal<Vec<Preview>>, mut b
                     osm_url: None,
                     latitude: None,
                     longitude: None,
+                    track_timestamp: None,
                 });
             }
         }
@@ -897,8 +920,16 @@ fn annotate_previews(mut previews: Signal<Vec<Preview>>, updates: Vec<PreviewUpd
             preview.osm_url = update.osm_url.clone();
             preview.latitude = update.latitude;
             preview.longitude = update.longitude;
+            preview.track_timestamp = update.track_timestamp;
         }
     }
+    current.sort_by_key(|preview| {
+        if preview.status.starts_with("MATCH") {
+            preview.track_timestamp.unwrap_or(i64::MAX)
+        } else {
+            i64::MAX
+        }
+    });
     previews.set(current);
 }
 
@@ -972,6 +1003,7 @@ async fn dry_run(
                     osm_url: None,
                     latitude: None,
                     longitude: None,
+                    track_timestamp: None,
                 });
                 continue;
             }
@@ -1006,6 +1038,11 @@ async fn dry_run(
                     coordinates: Some(coordinates),
                     latitude: Some(analysis.matched.lat),
                     longitude: Some(analysis.matched.lon),
+                    track_timestamp: if analysis.already_has_gps {
+                        None
+                    } else {
+                        Some(analysis.image_utc.timestamp_millis())
+                    },
                 });
                 matches += 1;
             }
@@ -1016,6 +1053,7 @@ async fn dry_run(
                 osm_url: None,
                 latitude: None,
                 longitude: None,
+                track_timestamp: None,
             }),
         }
     }
@@ -1058,10 +1096,8 @@ async fn tag_and_download(
     use zip::{write::SimpleFileOptions, CompressionMethod, ZipWriter};
 
     let options = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
-    let mut archive = ZipWriter::new(Cursor::new(Vec::new()));
-    let mut downloaded = 0;
     let mut skipped = Vec::new();
-    let mut manifest_files = Vec::new();
+    let mut tagged_images = Vec::new();
     for photo in photos {
         let name = photo.name();
         let bytes = match photo.read_bytes().await {
@@ -1079,34 +1115,44 @@ async fn tag_and_download(
             false,
             &track,
         ) {
-            Ok(tagged) => {
-                let archive_name = format!("geotagged-{name}");
-                if let Err(error) = archive.start_file(&archive_name, options) {
-                    skipped.push(format!("{name}: building ZIP: {error}"));
-                    continue;
-                }
-                if let Err(error) = archive.write_all(&tagged.bytes) {
-                    skipped.push(format!("{name}: writing ZIP: {error}"));
-                    continue;
-                }
-                manifest_files.push(serde_json::json!({
-                    "source_file": name,
-                    "output_file": archive_name,
-                    "image_utc": tagged.image_utc.to_rfc3339(),
-                    "latitude": tagged.matched.lat,
-                    "longitude": tagged.matched.lon,
-                    "altitude_meters": tagged.matched.altitude,
-                    "interpolated": tagged.matched.interpolated,
-                    "before_gap_seconds": tagged.matched.before_gap,
-                    "after_gap_seconds": tagged.matched.after_gap,
-                }));
-                downloaded += 1;
-            }
+            Ok(tagged) => tagged_images.push((name, tagged)),
             Err(error) => skipped.push(format!("{name}: {error:#}")),
         }
     }
-    if downloaded == 0 {
+    if tagged_images.is_empty() {
         return format!("No tagged copies were created. {}", skipped.join(" | "));
+    }
+    tagged_images.sort_by_key(|(_, tagged)| tagged.image_utc);
+    let mut archive = ZipWriter::new(Cursor::new(Vec::new()));
+    let mut manifest_files = Vec::new();
+    for (name, tagged) in tagged_images {
+        let archive_name = format!("geotagged-{name}");
+        if let Err(error) = archive.start_file(&archive_name, options) {
+            skipped.push(format!("{name}: building ZIP: {error}"));
+            continue;
+        }
+        if let Err(error) = archive.write_all(&tagged.bytes) {
+            skipped.push(format!("{name}: writing ZIP: {error}"));
+            continue;
+        }
+        manifest_files.push(serde_json::json!({
+            "source_file": name,
+            "output_file": archive_name,
+            "image_utc": tagged.image_utc.to_rfc3339(),
+            "latitude": tagged.matched.lat,
+            "longitude": tagged.matched.lon,
+            "altitude_meters": tagged.matched.altitude,
+            "interpolated": tagged.matched.interpolated,
+            "before_gap_seconds": tagged.matched.before_gap,
+            "after_gap_seconds": tagged.matched.after_gap,
+        }));
+    }
+    let downloaded = manifest_files.len();
+    if downloaded == 0 {
+        return format!(
+            "No tagged copies could be added to the ZIP. {}",
+            skipped.join(" | ")
+        );
     }
     let manifest = serde_json::json!({
         "format_version": 1,
