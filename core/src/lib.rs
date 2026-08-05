@@ -317,10 +317,20 @@ fn write_gps_to_jpeg(bytes: &mut Vec<u8>, matched: &Match) -> Result<()> {
             0
         }]));
     }
+    metadata.set_tag(ExifTag::Software("Track Time Tagger".to_string()));
+    metadata.set_tag(ExifTag::UserComment(user_comment(
+        "GPS added by Track Time Tagger - https://github.com/richyo-codes/track-time-geotag",
+    )));
     metadata
         .write_to_vec(bytes, file_type)
         .map_err(|error| anyhow::anyhow!("writing JPEG metadata: {error}"))?;
     Ok(())
+}
+
+fn user_comment(comment: &str) -> Vec<u8> {
+    let mut value = b"ASCII\0\0\0".to_vec();
+    value.extend_from_slice(comment.as_bytes());
+    value
 }
 
 fn decimal_to_dms(value: f64) -> Vec<uR64> {

@@ -623,11 +623,21 @@ fn write_gps_with_little_exif(path: &Path, matched: &Match, no_backup: bool) -> 
             0
         }]));
     }
+    metadata.set_tag(ExifTag::Software("Track Time Tagger".to_string()));
+    metadata.set_tag(ExifTag::UserComment(user_comment(
+        "GPS added by Track Time Tagger - https://github.com/richyo-codes/track-time-geotag",
+    )));
 
     metadata
         .write_to_file(path)
         .map_err(|err| anyhow::anyhow!("writing EXIF to {}: {err}", path.display()))?;
     Ok(())
+}
+
+fn user_comment(comment: &str) -> Vec<u8> {
+    let mut value = b"ASCII\0\0\0".to_vec();
+    value.extend_from_slice(comment.as_bytes());
+    value
 }
 
 fn decimal_to_dms(value: f64) -> Vec<uR64> {
@@ -656,7 +666,9 @@ fn write_gps_with_exiftool(path: &Path, matched: &Match, no_backup: bool) -> Res
         .arg(format!(
             "-GPSLongitudeRef={}",
             if matched.lon < 0.0 { "W" } else { "E" }
-        ));
+        ))
+        .arg("-Software=Track Time Tagger")
+        .arg("-UserComment=GPS added by Track Time Tagger - https://github.com/richyo-codes/track-time-geotag");
 
     if let Some(alt) = matched.altitude {
         cmd.arg(format!("-GPSAltitude={:.3}", alt.abs()))
